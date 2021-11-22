@@ -22,7 +22,6 @@ Then execute ` ansible-playbook setup.yml`. Then be patient - and eventually you
 
 For a list of all the configuration variables, have a look in `vars/all.yml` or for some configuration explkanations [here](##configuration).
 
-If you are interested in running local tests, see [Test with Multipass](test_with_multipass.md).
 ## Configuration
 
 All configuration is done via the environment variable files. To check what vareiables are available and what default values they are set to, check `vars/all.yml`. Make sure you do not change `all.yml`, but rather override them in your environment variable file, i.e. `vars/TEST.yml`.

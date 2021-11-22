@@ -1,80 +1,14 @@
 version: '3'
 services:
-  ghost:
-    image: {{ ghost_image }}
-    container_name: ghost
-    restart: unless-stopped
-    networks:
-      - ghost_network
-    depends_on:
-      - db
-    environment:
-      url: http://{{ server_url }}
-      database__client: mysql
-      database__connection__host: db
-      database__connection__user: {{ db_user }}
-      database__connection__password: {{ db_pass }}
-      database__connection__database: {{ db_database }}
-      logging__path: /logs
-      logging__info: 'info'
-      mail__transport: 'SMTP'
-      mail__from: {{ gmail_email }}
-      mail__options__service: 'gmail'
-      mail__options__host: 'smtp.gmail.com'
-      mail__options__port: 465
-      mail__options__secure: 'true'
-      mail__options__auth__user: {{ gmail_email }}
-      mail__options__auth__pass: {{ gmail_email }}
-    volumes:
-      - content:/var/lib/ghost/content
-      - ./ghost_logs:/logs
-
-  backup:
-    image: bennetimo/ghost-backup
-    #build: "{{ docker_ghost_dir }}/docker_build_backup"
-    container_name: backup
-    restart: unless-stopped
-    networks:
-      - ghost_network
-    environment: 
-      MYSQL_USER: {{ db_user }}
-      MYSQL_PASSWORD: {{ db_pass }}
-      MYSQL_DATABASE: {{ db_database }}
-    depends_on:
-      - ghost
-    volumes:
-      - content:/var/lib/ghost/content
-      - {{ ghost_backup_dir }}:/backups
-
-  db:
-    build: "{{ docker_ghost_dir }}/docker_build_db"
-    command: --default-authentication-plugin=mysql_native_password
-    container_name: db
-    restart: unless-stopped
-    cap_add:
-      - SYS_NICE # Neede b/o a MySQL-Bug
-    networks:
-      ghost_network:
-        aliases: 
-          # The backup container expects to access a 'mysql' container
-          - mysql
-    environment:
-      MYSQL_ROOT_PASSWORD: {{ db_root_pass }}
-      MYSQL_DATABASE: {{ db_database }}
-    volumes:
-      - ./ghost_mysql/data:/var/lib/mysql
-    # ports:
-    #   - '3306:3306'
-
 
   nginx:
     image: {{ nginx_certbot_image }}
     container_name: nginx
     restart: unless-stopped
     networks:
-      - ghost_network
+      - monitoring_network
     depends_on:
-      - ghost
+      - kuma
     ports:
       - '80:80'
       - '443:443'
@@ -89,12 +23,37 @@ services:
       - ./nginx_secrets:/etc/letsencrypt
       - ./nginx_conf.d:/etc/nginx/user_conf.d
 
-volumes:
-  content:
-     driver_opts:
-           type: none
-           device: "{{ docker_ghost_dir }}/ghost_content"
-           o: bind
+  kuma:
+    image: louislam/uptime-kuma
+    container_name: kuma
+    restart: unless-stopped
+    depends_on:
+      - signal
+    networks:
+      - monitoring_network
+    volumes:
+      - {{ docker_monitoring_dir }}/kuma:/app/data
+
+  signal:
+    image: bbernhard/signal-cli-rest-api:latest
+    container_name: signal
+    networks:
+      - monitoring_network
+    environment:
+      - MODE=normal #supported modes: json-rpc, native, normal
+      #- AUTO_RECEIVE_SCHEDULE=0 22 * * * #enable this parameter on demand (see description below)
+    ports:
+      - "8080:8080" #map docker port 8080 to host port 8080.
+    volumes:
+      - "./signal-cli-config:/home/.local/share/signal-cli" #map "signal-cli-config" folder on host system into docker container. the folder contains the password and cryptographic keys when a new number is registered
+ 
+# volumes:
+#   content:
+#      driver_opts:
+#            type: none
+#            device: "{{ docker_monitoring_dir }}/ghost_content"
+#            o: bind
+
 networks:
-  ghost_network:
-    name: ghost_network
+  monitoring_network:
+    name: monitoring_network

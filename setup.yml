@@ -42,9 +42,9 @@
       tags: debug_info
       become: no
       
-    - name: Create docker/ghost directory
+    - name: Create docker/monitoring directory
       file:
-        path: "{{ docker_ghost_dir }}"
+        path: "{{ docker_monitoring_dir }}"
         state: directory
         owner: root
         group: root
@@ -53,47 +53,29 @@
     - name: Copy docker-compose file (template based)
       template:
         src: files/docker-compose.yml
-        dest: "{{ docker_ghost_dir }}/"
+        dest: "{{ docker_monitoring_dir }}/"
         owner: root
         group: root
         mode: 0644
 
-    - name: Create ghost_logs directory
+    - name: Create kuma data directory
       file:
-        path: "{{ docker_ghost_dir }}/ghost_logs"
+        path: "{{ docker_monitoring_dir }}/kuma"
         state: directory
         owner: root
         group: root
         mode: 0777
-
-    - name: Create ghost_content directory
-      file:
-        path: "{{ docker_ghost_dir }}/ghost_content"
-        state: directory
-        owner: root
-        group: root
-        mode: 0777
-
-    - name: Copy create_user.sql (template based)
-      template:
-        src: files/docker_build_db/create_user.sql
-        dest: "{{ docker_ghost_dir }}/docker_build_db/"
-
-    - name: Copy Dockerfile for DB container (template based)
-      template:
-        src: files/docker_build_db/Dockerfile
-        dest: "{{ docker_ghost_dir }}/docker_build_db/"
 
     # Copy the entire nginx configuration directory
     - name: Copy nginx configuration directory
       copy:
         src: files/nginx_conf.d/
-        dest: "{{ docker_ghost_dir }}/nginx_conf.d"
+        dest: "{{ docker_monitoring_dir }}/nginx_conf.d"
 
     - name: Copy nginx.conf (template based)
       template:
         src: files/nginx_conf.d/nginx.conf
-        dest: "{{ docker_ghost_dir }}/nginx_conf.d/nginx.conf"
+        dest: "{{ docker_monitoring_dir }}/nginx_conf.d/nginx.conf"
         owner: root
         group: root
         mode: 0644
@@ -104,7 +86,7 @@
         # This must be set to no, otherwise the mysql 
         # docker will not execute the create_user.sql
         restarted: no  
-        project_src: "{{ docker_ghost_dir }}/"
+        project_src: "{{ docker_monitoring_dir }}/"
         build: yes
         debug: yes
         remove_orphans: yes
